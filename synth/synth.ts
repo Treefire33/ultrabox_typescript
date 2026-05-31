@@ -14,7 +14,7 @@ import {
 import { Deque } from "./Deque";
 import { events } from "../global/Events";
 import { ChannelState, Instrument, InstrumentState } from "./Instrument";
-import { Channel, Pattern } from "./Pattern";
+import { Channel, ChannelType, Pattern } from "./Pattern";
 import { FilterCoefficients, FrequencyResponse, DynamicBiquadFilter } from "./filtering";
 import { Song } from "./Song";
 import { HeldMod } from "./HeldMod";
@@ -24,6 +24,7 @@ import { FilterSettings } from "./FilterSettings";
 import { Note, NotePin } from "./Note";
 import { PickedString } from "./PickedString";
 import { Tone } from "./Tone";
+import { clamp } from "./Utilities";
 
 declare global {
     interface Window {
@@ -107,9 +108,7 @@ export class Synth {
     }
 
     public computeLatestModValues(): void {
-
-        if (this.song != null && this.song.modChannelCount > 0) {
-
+        if (this.song != null) {
             // Clear all mod values, and set up temp variables for the time a mod would be set at.
             let latestModTimes: (number | null)[] = [];
             let latestModInsTimes: (number | null)[][][] = [];
@@ -118,15 +117,17 @@ export class Synth {
             this.modInsValues = [];
             this.nextModInsValues = [];
             this.heldMods = [];
-            for (let channel: number = 0; channel < this.song.pitchChannelCount + this.song.noiseChannelCount; channel++) {
-                latestModInsTimes[channel] = [];
-                this.modInsValues[channel] = [];
-                this.nextModInsValues[channel] = [];
+            for (let channelIndex: number = 0; channelIndex < this.song.channels.length; channelIndex++) {
+                const channel: Channel = this.song.channels[channelIndex];
+                if (channel.channelType >= ChannelType.mod) { continue; }
+                latestModInsTimes[channelIndex] = [];
+                this.modInsValues[channelIndex] = [];
+                this.nextModInsValues[channelIndex] = [];
 
-                for (let instrument: number = 0; instrument < this.song.channels[channel].instruments.length; instrument++) {
-                    this.modInsValues[channel][instrument] = [];
-                    this.nextModInsValues[channel][instrument] = [];
-                    latestModInsTimes[channel][instrument] = [];
+                for (let instrument: number = 0; instrument < this.song.channels[channelIndex].instruments.length; instrument++) {
+                    this.modInsValues[channelIndex][instrument] = [];
+                    this.nextModInsValues[channelIndex][instrument] = [];
+                    latestModInsTimes[channelIndex][instrument] = [];
                 }
             }
 
@@ -134,7 +135,8 @@ export class Synth {
             let currentPart: number = this.beat * Config.partsPerBeat + this.part;
 
             // For mod channels, calculate last set value for each mod
-            for (let channelIndex: number = this.song.pitchChannelCount + this.song.noiseChannelCount; channelIndex < this.song.getChannelCount(); channelIndex++) {
+            for (let channelIndex: number = 0; channelIndex < this.song.channels.length; channelIndex++) {
+                if (this.song.channels[channelIndex].channelType != ChannelType.mod) { continue; }
                 if (!(this.song.channels[channelIndex].muted)) {
 
                     let pattern: Pattern | null;
@@ -454,7 +456,8 @@ export class Synth {
     private findPartsInBar(bar: number): number {
         if (this.song == null) return 0;
         let partsInBar: number = Config.partsPerBeat * this.song.beatsPerBar;
-        for (let channel: number = this.song.pitchChannelCount + this.song.noiseChannelCount; channel < this.song.getChannelCount(); channel++) {
+        for (let channel: number = 0; channel < this.song.getChannelCount(); channel++) {
+            if (this.song.channels[channel].channelType != ChannelType.mod) { continue; }
             let pattern: Pattern | null = this.song.getPattern(channel, bar);
             if (pattern != null) {
                 let instrument: Instrument = this.song.channels[channel].instruments[pattern.instruments[0]];
@@ -487,11 +490,12 @@ export class Synth {
         let prevTempo: number = this.song.tempo;
 
         // Determine if any tempo or next bar mods happen anywhere in the window
-        for (let channel: number = this.song.getChannelCount() - 1; channel >= this.song.pitchChannelCount + this.song.noiseChannelCount; channel--) {
+        for (let channelIndex: number = 0; channelIndex < this.song.channels.length; channelIndex++) {
+            if (this.song.channels[channelIndex].channelType != ChannelType.mod) { continue; }
             for (let bar: number = startBar; bar < endBar; bar++) {
-                let pattern: Pattern | null = this.song.getPattern(channel, bar);
+                let pattern: Pattern | null = this.song.getPattern(channelIndex, bar);
                 if (pattern != null) {
-                    let instrument: Instrument = this.song.channels[channel].instruments[pattern.instruments[0]];
+                    let instrument: Instrument = this.song.channels[channelIndex].instruments[pattern.instruments[0]];
                     for (let mod: number = 0; mod < Config.modCount; mod++) {
                         if (instrument.modulators[mod] == Config.modulators.dictionary["tempo"].index) {
                             hasTempoMods = true;
@@ -510,7 +514,8 @@ export class Synth {
             let latestTempoValue: number = 0;
 
             for (let bar: number = startBar - 1; bar >= 0; bar--) {
-                for (let channel: number = this.song.getChannelCount() - 1; channel >= this.song.pitchChannelCount + this.song.noiseChannelCount; channel--) {
+                for (let channel: number = 0; channel < this.song.channels.length; channel++) {
+                    if (this.song.channels[channel].channelType != ChannelType.mod) { continue; }
                     let pattern = this.song.getPattern(channel, bar);
 
                     if (pattern != null) {
@@ -572,7 +577,8 @@ export class Synth {
                 // Compute average tempo in this tick window, or use last tempo if nothing happened
                 if (hasTempoMods) {
                     let foundMod: boolean = false;
-                    for (let channel: number = this.song.getChannelCount() - 1; channel >= this.song.pitchChannelCount + this.song.noiseChannelCount; channel--) {
+                    for (let channel: number = 0; channel < this.song.channels.length; channel--) {
+                        if (this.song.channels[channel].channelType != ChannelType.mod) { continue; }
                         if (foundMod == false) {
                             let pattern: Pattern | null = this.song.getPattern(channel, bar);
                             if (pattern != null) {
@@ -742,7 +748,8 @@ export class Synth {
         if (this.song != null) {
             this.song.inVolumeCap = 0.0;
             this.song.outVolumeCap = 0.0;
-            for (let channelIndex: number = 0; channelIndex < this.song.pitchChannelCount + this.song.noiseChannelCount; channelIndex++) {
+            for (let channelIndex: number = 0; channelIndex < this.song.channels.length; channelIndex++) {
+                if (this.song.channels[channelIndex].channelType < ChannelType.mod) { continue; }
                 this.modInsValues[channelIndex] = [];
                 this.nextModInsValues[channelIndex] = [];
             }
@@ -1084,7 +1091,8 @@ export class Synth {
 
                 // First modulation pass. Determines active tones.
                 // Runs everything but Dot X/Y mods, to let them always come after morph.
-                for (let channelIndex: number = song.pitchChannelCount + song.noiseChannelCount; channelIndex < song.getChannelCount(); channelIndex++) {
+                for (let channelIndex: number = 0; channelIndex < song.getChannelCount(); channelIndex++) {
+                    if (this.song.channels[channelIndex].channelType != ChannelType.mod) { continue; }
                     const channel: Channel = song.channels[channelIndex];
                     const channelState: ChannelState = this.channels[channelIndex];
 
@@ -1109,7 +1117,8 @@ export class Synth {
 
                  // Second modulation pass.
                 // Only for Dot X/Y mods.
-                for (let channelIndex: number = song.pitchChannelCount + song.noiseChannelCount; channelIndex < song.getChannelCount(); channelIndex++) {
+                for (let channelIndex: number = 0; channelIndex < song.getChannelCount(); channelIndex++) {
+                    if (this.song.channels[channelIndex].channelType != ChannelType.mod) { continue; }
                     const channel: Channel = song.channels[channelIndex];
                     const channelState: ChannelState = this.channels[channelIndex];
 
@@ -1152,7 +1161,8 @@ export class Synth {
 		    	continue;
             }
 
-            for (let channelIndex: number = 0; channelIndex < song.pitchChannelCount + song.noiseChannelCount; channelIndex++) {
+            for (let channelIndex: number = 0; channelIndex < song.channels.length; channelIndex++) {
+                if (this.song.channels[channelIndex].channelType >= ChannelType.mod) { continue; }
                 const channel: Channel = song.channels[channelIndex];
                 const channelState: ChannelState = this.channels[channelIndex];
 
@@ -1320,7 +1330,8 @@ export class Synth {
                     }
                 }
 
-                for (let channel: number = 0; channel < this.song.pitchChannelCount + this.song.noiseChannelCount; channel++) {
+                for (let channel: number = 0; channel < this.song.channels.length; channel++) {
+                    if (this.song.channels[channel].channelType >= ChannelType.mod) { continue; }
                     for (let instrumentIdx: number = 0; instrumentIdx < this.song.channels[channel].instruments.length; instrumentIdx++) {
                         let instrument: Instrument = this.song.channels[channel].instruments[instrumentIdx];
                         let instrumentState: InstrumentState = this.channels[channel].instruments[instrumentIdx];
@@ -1358,7 +1369,8 @@ export class Synth {
                 }
 
                 // Update next-used filters after each run
-                for (let channel: number = 0; channel < this.song.pitchChannelCount + this.song.noiseChannelCount; channel++) {
+                for (let channel: number = 0; channel < this.song.channels.length; channel++) {
+                    if (this.song.channels[channel].channelType >= ChannelType.mod) { continue; }
                     for (let instrumentIdx: number = 0; instrumentIdx < this.song.channels[channel].instruments.length; instrumentIdx++) {
                         let instrument: Instrument = this.song.channels[channel].instruments[instrumentIdx];
                         if (instrument.tmpEqFilterEnd != null) {
@@ -1434,7 +1446,8 @@ export class Synth {
 
             // Bound LFO times to be within their period (to keep values from getting large)
             // I figured this modulo math probably doesn't have to happen every LFO tick.
-            for (let channelIndex: number = 0; channelIndex < this.song.pitchChannelCount + this.song.noiseChannelCount; channelIndex++) {
+            for (let channelIndex: number = 0; channelIndex < this.song.channels.length; channelIndex++) {
+                if (this.song.channels[channelIndex].channelType >= ChannelType.mod) { continue; }
                 for (let instrumentIndex = 0; instrumentIndex < this.channels[channelIndex].instruments.length; instrumentIndex++) {
                     const instrumentState: InstrumentState = this.channels[channelIndex].instruments[instrumentIndex];
                     const instrument: Instrument = this.song.channels[channelIndex].instruments[instrumentIndex];
@@ -1445,7 +1458,8 @@ export class Synth {
             }
 
             for (let setting: number = 0; setting < Config.modulators.length; setting++) {
-                for (let channel: number = 0; channel < this.song.pitchChannelCount + this.song.noiseChannelCount; channel++) {
+                for (let channel: number = 0; channel < this.song.channels.length; channel++) {
+                    if (this.song.channels[channel].channelType >= ChannelType.mod) { continue; }
                     for (let instrument: number = 0; instrument < this.song.getMaxInstrumentsPerChannel(); instrument++) {
                         if (this.nextModInsValues != null && this.nextModInsValues[channel] != null && this.nextModInsValues[channel][instrument] != null && this.nextModInsValues[channel][instrument][setting] != null) {
                             this.modInsValues[channel][instrument][setting] = this.nextModInsValues[channel][instrument][setting];

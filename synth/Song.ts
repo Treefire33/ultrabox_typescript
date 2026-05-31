@@ -3364,7 +3364,74 @@ export class Song {
             return base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
         }
 
-        //// TODO: Custom Samples
+        compressed = compressed.replaceAll("%7C", "|")
+        var compressed_array = compressed.split("|");
+        compressed = compressed_array.shift()!;
+        if(EditorConfig.customSamples == null || EditorConfig.customSamples.join(", ") != compressed_array.join(", ")) {
+            Song._restoreChipWaveListToDefault();
+
+            let willLoadLegacySamples = false;
+            let willLoadNintariboxSamples = false;
+            let willLoadMarioPaintboxSamples = false;
+            const customSampleUrls = [];
+            const customSamplePresets: Preset[] = [];
+            sampleLoadingState.statusTable = {};
+            sampleLoadingState.urlTable = {};
+            sampleLoadingState.totalSamples = 0;
+            sampleLoadingState.samplesLoaded = 0;
+            sampleLoadEvents.dispatchEvent(new SampleLoadedEvent(
+                sampleLoadingState.totalSamples,
+                sampleLoadingState.samplesLoaded
+            ));
+            for (const url of compressed_array) {
+                if (url.toLowerCase() === bundledSamplePacks.legacy) {
+                    if (!willLoadLegacySamples) {
+                        willLoadLegacySamples = true;
+                        customSampleUrls.push(url);
+                        loadBuiltInSamples(0);
+                    }
+                } 
+                else if (url.toLowerCase() === bundledSamplePacks.nintaribox) {
+                    if (!willLoadNintariboxSamples) {
+                        willLoadNintariboxSamples = true;
+                        customSampleUrls.push(url);
+                        loadBuiltInSamples(1);
+                    }
+                }
+                else if (url.toLowerCase() === bundledSamplePacks.mariopaintbox) {
+                    if (!willLoadMarioPaintboxSamples) {
+                        willLoadMarioPaintboxSamples = true;
+                        customSampleUrls.push(url);
+                        loadBuiltInSamples(2);
+                    }
+                }
+                else {
+                    // UB version 2 URLs and below will be using the old syntax, so we do need to parse it in that case.
+                    // UB version 3 URLs should only have the new syntax, though, unless the user has edited the URL manually.
+                    const ok: boolean = Song._parseAndConfigureCustomSample(url, customSampleUrls, customSamplePresets, sampleLoadingState, false);
+                    if (!ok) {
+                        continue;
+                    }
+                }
+            }
+            if (customSampleUrls.length > 0) {
+                EditorConfig.customSamples = customSampleUrls;
+            }
+            if (customSamplePresets.length > 0) {
+                const customSamplePresetsMap: DictionaryArray<Preset> = toNameMap(customSamplePresets);
+                EditorConfig.presetCategories[EditorConfig.presetCategories.length] = {
+                    name: "Custom Sample Presets",
+                    presets: customSamplePresetsMap,
+                    index: EditorConfig.presetCategories.length,
+                };
+                // EditorConfig.presetCategories.splice(1, 0, {
+                        // name: "Custom Sample Presets",
+                        // presets: customSamplePresets,
+                        // index: EditorConfig.presetCategories.length,
+                // });
+            }
+        }
+        //samplemark
 
         let command: number;
         let useSlowerArpSpeed: boolean = false;
@@ -3397,20 +3464,20 @@ export class Song {
             } break;
             case SongTagCode.channelName: {
                 // Length of channel name string. Due to some crazy Unicode characters this needs to be 2 bytes...
-                var channelNameLength = ((base64CharCodeToInt[compressed.charCodeAt(charIndex++)] << 6) + base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                var channelNameLength = ((advance() << 6) + advance());
                 this.channels[currentChannelIndex].name = decodeURIComponent(compressed.substring(charIndex, charIndex + channelNameLength));
 
                 charIndex += channelNameLength;
             } break;
             case SongTagCode.channelOctave: {
                 const channel: Channel = this.channels[currentChannelIndex];
-                channel.octave = clamp(0, Config.pitchOctaves, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                channel.octave = clamp(0, Config.pitchOctaves, advance());
             } break;
             case SongTagCode.channelInst: {
                 const channel: Channel = this.channels[currentChannelIndex];
                 let instrumentCount: number = 1;
                 if (this.layeredInstruments || this.patternInstruments) {
-                    instrumentCount = validateRange(Config.instrumentCountMin, this.getMaxInstrumentsPerChannel(), base64CharCodeToInt[compressed.charCodeAt(charIndex++)] + Config.instrumentCountMin);
+                    instrumentCount = validateRange(Config.instrumentCountMin, this.getMaxInstrumentsPerChannel(), advance() + Config.instrumentCountMin);
                 }
                 const isNoiseChannel: boolean = channel.channelType == ChannelType.noise;
                 const isModChannel: boolean = channel.channelType == ChannelType.mod;
@@ -3460,11 +3527,11 @@ export class Song {
             } break;
             case SongTagCode.patternCount: {
                 let patternsPerChannel: number;
-                patternsPerChannel = (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] << 6) + base64CharCodeToInt[compressed.charCodeAt(charIndex++)] + 1;
+                patternsPerChannel = (advance() << 6) + advance() + 1;
                 this.patternsPerChannel = validateRange(1, Config.barCountMax, patternsPerChannel);
             } break;
             case SongTagCode.instrumentCount: {
-                const instrumentsFlagBits: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                const instrumentsFlagBits: number = advance();
                 this.layeredInstruments = (instrumentsFlagBits & (1 << 1)) != 0;
                 this.patternInstruments = (instrumentsFlagBits & (1 << 0)) != 0;
             } break;
@@ -3475,7 +3542,7 @@ export class Song {
                     instrumentIndexIterator = 0;
                 }
                 const instrument: Instrument = channel.instruments[instrumentIndexIterator];
-                let instrumentType: number = validateRange(0, InstrumentType.length - 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                let instrumentType: number = validateRange(0, InstrumentType.length - 1, advance());
                 instrument.setTypeAndReset(
                     instrumentType,
                     channel.channelType == ChannelType.noise
@@ -3489,20 +3556,20 @@ export class Song {
                 }
             } break;
             case SongTagCode.rhythm: {
-                this.rhythm = clamp(0, Config.rhythms.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                this.rhythm = clamp(0, Config.rhythms.length, advance());
             } break;
             case SongTagCode.preset: {
                 const channel: Channel = this.channels[currentChannelIndex];
-                const presetValue: number = (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] << 6) | (base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                const presetValue: number = (advance() << 6) | (advance());
                 channel.instruments[instrumentIndexIterator].preset = presetValue;
             } break;
             case SongTagCode.wave: {
                 const channel: Channel = this.channels[currentChannelIndex];
                 if (channel.instruments[instrumentIndexIterator].type == InstrumentType.noise) {
-                    channel.instruments[instrumentIndexIterator].chipNoise = clamp(0, Config.chipNoises.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    channel.instruments[instrumentIndexIterator].chipNoise = clamp(0, Config.chipNoises.length, advance());
                 } else {
-                    const chipWaveReal = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
-                    const chipWaveCounter = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                    const chipWaveReal = advance();
+                    const chipWaveCounter = advance();
             
                     if (chipWaveCounter == 3) {
                         channel.instruments[instrumentIndexIterator].chipWave = clamp(0, Config.chipWaves.length, chipWaveReal + 186);											   					   	 						  								
@@ -3518,11 +3585,11 @@ export class Song {
             case SongTagCode.eqFilter: {
                 const channel: Channel = this.channels[currentChannelIndex];
                 const instrument: Instrument = channel.instruments[instrumentIndexIterator];
-                let typeCheck: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                let typeCheck: number = advance();
 
                 if (typeCheck == 0) {
                     instrument.eqFilterType = false;
-                    typeCheck = base64CharCodeToInt[compressed.charCodeAt(charIndex++)]; // Skip to next to get control point count
+                    typeCheck = advance(); // Skip to next to get control point count
                     const originalControlPointCount: number = typeCheck;
                     instrument.eqFilter.controlPointCount = clamp(0, Config.filterMaxPoints + 1, originalControlPointCount);
                     for (let i: number = instrument.eqFilter.controlPoints.length; i < instrument.eqFilter.controlPointCount; i++) {
@@ -3530,9 +3597,9 @@ export class Song {
                     }
                     for (let i: number = 0; i < instrument.eqFilter.controlPointCount; i++) {
                         const point: FilterControlPoint = instrument.eqFilter.controlPoints[i];
-                        point.type = clamp(0, FilterType.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                        point.freq = clamp(0, Config.filterFreqRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                        point.gain = clamp(0, Config.filterGainRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                        point.type = clamp(0, FilterType.length, advance());
+                        point.freq = clamp(0, Config.filterFreqRange, advance());
+                        point.gain = clamp(0, Config.filterGainRange, advance());
                     }
                     for (let i: number = instrument.eqFilter.controlPointCount; i < originalControlPointCount; i++) {
                         charIndex += 3;
@@ -3540,11 +3607,11 @@ export class Song {
 
                     // Get subfilters as well. Skip Index 0, is a copy of the base filter.
                     instrument.eqSubFilters[0] = instrument.eqFilter;
-                    let usingSubFilterBitfield: number = (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] << 6) | (base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    let usingSubFilterBitfield: number = (advance() << 6) | (advance());
                     for (let j: number = 0; j < Config.filterMorphCount - 1; j++) {
                         if (usingSubFilterBitfield & (1 << j)) {
                             // Number of control points
-                            const originalSubfilterControlPointCount: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                            const originalSubfilterControlPointCount: number = advance();
                             if (instrument.eqSubFilters[j + 1] == null)
                                 instrument.eqSubFilters[j + 1] = new FilterSettings();
                             instrument.eqSubFilters[j + 1]!.controlPointCount = clamp(0, Config.filterMaxPoints + 1, originalSubfilterControlPointCount);
@@ -3553,9 +3620,9 @@ export class Song {
                             }
                             for (let i: number = 0; i < instrument.eqSubFilters[j + 1]!.controlPointCount; i++) {
                                 const point: FilterControlPoint = instrument.eqSubFilters[j + 1]!.controlPoints[i];
-                                point.type = clamp(0, FilterType.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                                point.freq = clamp(0, Config.filterFreqRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                                point.gain = clamp(0, Config.filterGainRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                                point.type = clamp(0, FilterType.length, advance());
+                                point.freq = clamp(0, Config.filterFreqRange, advance());
+                                point.gain = clamp(0, Config.filterGainRange, advance());
                             }
                             for (let i: number = instrument.eqSubFilters[j + 1]!.controlPointCount; i < originalSubfilterControlPointCount; i++) {
                                 charIndex += 3;
@@ -3565,17 +3632,17 @@ export class Song {
                 }
                 else {
                     instrument.eqFilterType = true;
-                    instrument.eqFilterSimpleCut = clamp(0, Config.filterSimpleCutRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                    instrument.eqFilterSimplePeak = clamp(0, Config.filterSimplePeakRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.eqFilterSimpleCut = clamp(0, Config.filterSimpleCutRange, advance());
+                    instrument.eqFilterSimplePeak = clamp(0, Config.filterSimplePeakRange, advance());
                 }
             } break;
             case SongTagCode.chipLoopControls: {
                 // Read the new loop control data format.
                 // See Song.toBase64String for details on the encodings used here.
-                const encodedLoopMode: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                const encodedLoopMode: number = advance();
                 const isUsingAdvancedLoopControls: boolean = Boolean(encodedLoopMode & 1);
                 const chipWaveLoopMode: number = encodedLoopMode >> 1;
-                const encodedReleaseMode: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                const encodedReleaseMode: number = advance();
                 const chipWavePlayBackwards: boolean = Boolean(encodedReleaseMode & 1);
                 // const chipWaveReleaseMode: number = encodedReleaseMode >> 1;
                 const chipWaveLoopStart: number = decode32BitNumber(compressed, charIndex);
@@ -3596,26 +3663,26 @@ export class Song {
             case SongTagCode.drumsetEnvelopes: {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
                 for (let i: number = 0; i < Config.drumCount; i++) {
-                    let aa: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                    let aa: number = advance();
                     instrument.drumsetEnvelopes[i] = clamp(0, Config.envelopes.length, aa);
                 }
             } break;
             case SongTagCode.pulseWidth: {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
-                instrument.pulseWidth = clamp(0, Config.pulseWidthRange + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                instrument.decimalOffset = clamp(0, 99 + 1, (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] << 6) + base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                instrument.pulseWidth = clamp(0, Config.pulseWidthRange + 1, advance());
+                instrument.decimalOffset = clamp(0, 99 + 1, (advance() << 6) + advance());
             } break;
             case SongTagCode.stringSustain: {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
-                const sustainValue: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                const sustainValue: number = advance();
 				instrument.stringSustain = clamp(0, Config.stringSustainRange, sustainValue & 0x1F);
 				instrument.stringSustainType = Config.enableAcousticSustain ? clamp(0, SustainType.length, sustainValue >> 5) : SustainType.bright;
             } break;
             case SongTagCode.fadeInOut: {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
-                instrument.fadeIn = clamp(0, Config.fadeInRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                instrument.fadeOut = clamp(0, Config.fadeOutTicks.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                instrument.clicklessTransition = base64CharCodeToInt[compressed.charCodeAt(charIndex++)] ? true : false;
+                instrument.fadeIn = clamp(0, Config.fadeInRange, advance());
+                instrument.fadeOut = clamp(0, Config.fadeOutTicks.length, advance());
+                instrument.clicklessTransition = advance() ? true : false;
             } break;
             case SongTagCode.vibrato: {
                 // Do nothing? This song tag code is deprecated for now.
@@ -3624,23 +3691,23 @@ export class Song {
                 // Do nothing, deprecated for now
             } break;
             case SongTagCode.unison: {
-                this.channels[currentChannelIndex].instruments[instrumentIndexIterator].unison = clamp(0, Config.unisons.length + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                this.channels[currentChannelIndex].instruments[instrumentIndexIterator].unison = clamp(0, Config.unisons.length + 1, advance());
                 const instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
                 
                 if (instrument.unison == Config.unisons.length) {
-                    instrument.unisonVoices = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                    instrument.unisonVoices = advance();
 
-                    const unisonSpreadNegative = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
-                    const unisonSpread: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)] + ((base64CharCodeToInt[compressed.charCodeAt(charIndex++)] + (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] * 63)) * 63);
+                    const unisonSpreadNegative = advance();
+                    const unisonSpread: number = advance() + ((advance() + (advance() * 63)) * 63);
 
-                    const unisonOffsetNegative = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
-                    const unisonOffset: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)] + ((base64CharCodeToInt[compressed.charCodeAt(charIndex++)] + (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] * 63)) * 63);
+                    const unisonOffsetNegative = advance();
+                    const unisonOffset: number = advance() + ((advance() + (advance() * 63)) * 63);
 
-                    const unisonExpressionNegative = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
-                    const unisonExpression: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)] + (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] * 63);
+                    const unisonExpressionNegative = advance();
+                    const unisonExpression: number = advance() + (advance() * 63);
                     
-                    const unisonSignNegative = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
-                    const unisonSign: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)] + (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] * 63);
+                    const unisonSignNegative = advance();
+                    const unisonSign: number = advance() + (advance() * 63);
 
 
                     instrument.unisonSpread = unisonSpread / 1000;
@@ -3669,22 +3736,22 @@ export class Song {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
                 // BeepBox currently uses two base64 characters at 6 bits each for a bitfield representing all the enabled effects.
                 if (EffectType.length > 12) throw new Error();
-                instrument.effects = (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] << 6) | (base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                instrument.effects = (advance() << 6) | (advance());
 
                 if (effectsIncludeNoteFilter(instrument.effects)) {
-                    let typeCheck: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                    let typeCheck: number = advance();
                     if (typeCheck == 0) {
                         instrument.noteFilterType = false;
-                        typeCheck = base64CharCodeToInt[compressed.charCodeAt(charIndex++)]; // Skip to next index in jummbox to get actual count
+                        typeCheck = advance(); // Skip to next index in jummbox to get actual count
                         instrument.noteFilter.controlPointCount = clamp(0, Config.filterMaxPoints + 1, typeCheck);
                         for (let i: number = instrument.noteFilter.controlPoints.length; i < instrument.noteFilter.controlPointCount; i++) {
                             instrument.noteFilter.controlPoints[i] = new FilterControlPoint();
                         }
                         for (let i: number = 0; i < instrument.noteFilter.controlPointCount; i++) {
                             const point: FilterControlPoint = instrument.noteFilter.controlPoints[i];
-                            point.type = clamp(0, FilterType.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                            point.freq = clamp(0, Config.filterFreqRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                            point.gain = clamp(0, Config.filterGainRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                            point.type = clamp(0, FilterType.length, advance());
+                            point.freq = clamp(0, Config.filterFreqRange, advance());
+                            point.gain = clamp(0, Config.filterGainRange, advance());
                         }
                         for (let i: number = instrument.noteFilter.controlPointCount; i < typeCheck; i++) {
                             charIndex += 3;
@@ -3692,11 +3759,11 @@ export class Song {
 
                         // Get subfilters as well. Skip Index 0, is a copy of the base filter.
                         instrument.noteSubFilters[0] = instrument.noteFilter;
-                        let usingSubFilterBitfield: number = (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] << 6) | (base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                        let usingSubFilterBitfield: number = (advance() << 6) | (advance());
                         for (let j: number = 0; j < Config.filterMorphCount - 1; j++) {
                             if (usingSubFilterBitfield & (1 << j)) {
                                 // Number of control points
-                                const originalSubfilterControlPointCount: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                                const originalSubfilterControlPointCount: number = advance();
                                 if (instrument.noteSubFilters[j + 1] == null)
                                     instrument.noteSubFilters[j + 1] = new FilterSettings();
                                 instrument.noteSubFilters[j + 1]!.controlPointCount = clamp(0, Config.filterMaxPoints + 1, originalSubfilterControlPointCount);
@@ -3705,9 +3772,9 @@ export class Song {
                                 }
                                 for (let i: number = 0; i < instrument.noteSubFilters[j + 1]!.controlPointCount; i++) {
                                     const point: FilterControlPoint = instrument.noteSubFilters[j + 1]!.controlPoints[i];
-                                    point.type = clamp(0, FilterType.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                                    point.freq = clamp(0, Config.filterFreqRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                                    point.gain = clamp(0, Config.filterGainRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                                    point.type = clamp(0, FilterType.length, advance());
+                                    point.freq = clamp(0, Config.filterFreqRange, advance());
+                                    point.gain = clamp(0, Config.filterGainRange, advance());
                                 }
                                 for (let i: number = instrument.noteSubFilters[j + 1]!.controlPointCount; i < originalSubfilterControlPointCount; i++) {
                                     charIndex += 3;
@@ -3717,36 +3784,36 @@ export class Song {
                     } else {
                         instrument.noteFilterType = true;
                         instrument.noteFilter.reset();
-                        instrument.noteFilterSimpleCut = clamp(0, Config.filterSimpleCutRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                        instrument.noteFilterSimplePeak = clamp(0, Config.filterSimplePeakRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                        instrument.noteFilterSimpleCut = clamp(0, Config.filterSimpleCutRange, advance());
+                        instrument.noteFilterSimplePeak = clamp(0, Config.filterSimplePeakRange, advance());
                     }
                 }
                 if (effectsIncludeTransition(instrument.effects)) {
-                    instrument.transition = clamp(0, Config.transitions.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.transition = clamp(0, Config.transitions.length, advance());
                 }
                 if (effectsIncludeChord(instrument.effects)) {
-                    instrument.chord = clamp(0, Config.chords.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.chord = clamp(0, Config.chords.length, advance());
                     // Custom arpeggio speed... only in JB, and only if the instrument arpeggiates.
                     if (instrument.chord == Config.chords.dictionary["arpeggio"].index) {
-                        instrument.arpeggioSpeed = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
-                        instrument.fastTwoNoteArp = (base64CharCodeToInt[compressed.charCodeAt(charIndex++)]) ? true : false;
+                        instrument.arpeggioSpeed = advance();
+                        instrument.fastTwoNoteArp = (advance()) ? true : false;
                     }
                 }
                 if (effectsIncludePitchShift(instrument.effects)) {
-                    instrument.pitchShift = clamp(0, Config.pitchShiftRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.pitchShift = clamp(0, Config.pitchShiftRange, advance());
                 }
                 if (effectsIncludeDetune(instrument.effects)) {
-                    instrument.detune = clamp(Config.detuneMin, Config.detuneMax + 1, (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] << 6) + base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.detune = clamp(Config.detuneMin, Config.detuneMax + 1, (advance() << 6) + advance());
                 }
                 if (effectsIncludeVibrato(instrument.effects)) {
-                    instrument.vibrato = clamp(0, Config.vibratos.length + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.vibrato = clamp(0, Config.vibratos.length + 1, advance());
 
                     // Custom vibrato
                     if (instrument.vibrato == Config.vibratos.length) {
-                        instrument.vibratoDepth = clamp(0, Config.modulators.dictionary["vibrato depth"].maxRawVol + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]) / 25;
-                        instrument.vibratoSpeed = clamp(0, Config.modulators.dictionary["vibrato speed"].maxRawVol + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                        instrument.vibratoDelay = clamp(0, Config.modulators.dictionary["vibrato delay"].maxRawVol + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                        instrument.vibratoType = clamp(0, Config.vibratoTypes.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                        instrument.vibratoDepth = clamp(0, Config.modulators.dictionary["vibrato depth"].maxRawVol + 1, advance()) / 25;
+                        instrument.vibratoSpeed = clamp(0, Config.modulators.dictionary["vibrato speed"].maxRawVol + 1, advance());
+                        instrument.vibratoDelay = clamp(0, Config.modulators.dictionary["vibrato delay"].maxRawVol + 1, advance());
+                        instrument.vibratoType = clamp(0, Config.vibratoTypes.length, advance());
                     }
                     // Enforce standard vibrato settings
                     else {
@@ -3757,26 +3824,26 @@ export class Song {
                     }
                 }
                 if (effectsIncludeDistortion(instrument.effects)) {
-                    instrument.distortion = clamp(0, Config.distortionRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                    instrument.aliases = base64CharCodeToInt[compressed.charCodeAt(charIndex++)] ? true : false;
+                    instrument.distortion = clamp(0, Config.distortionRange, advance());
+                    instrument.aliases = advance() ? true : false;
                 }
                 if (effectsIncludeBitcrusher(instrument.effects)) {
-                    instrument.bitcrusherFreq = clamp(0, Config.bitcrusherFreqRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                    instrument.bitcrusherQuantization = clamp(0, Config.bitcrusherQuantizationRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.bitcrusherFreq = clamp(0, Config.bitcrusherFreqRange, advance());
+                    instrument.bitcrusherQuantization = clamp(0, Config.bitcrusherQuantizationRange, advance());
                 }
                 if (effectsIncludePanning(instrument.effects)) {
-                    instrument.pan = clamp(0, Config.panMax + 1, (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] << 6) + base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                    instrument.panDelay = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                    instrument.pan = clamp(0, Config.panMax + 1, (advance() << 6) + advance());
+                    instrument.panDelay = advance();
                 }
                 if (effectsIncludeChorus(instrument.effects)) {
-                    instrument.chorus = clamp(0, Config.chorusRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.chorus = clamp(0, Config.chorusRange, advance());
                 }
                 if (effectsIncludeEcho(instrument.effects)) {
-                    instrument.echoSustain = clamp(0, Config.echoSustainRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                    instrument.echoDelay = clamp(0, Config.echoDelayRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.echoSustain = clamp(0, Config.echoSustainRange, advance());
+                    instrument.echoDelay = clamp(0, Config.echoDelayRange, advance());
                 }
                 if (effectsIncludeReverb(instrument.effects)) {
-                    instrument.reverb = clamp(0, Config.reverbRange, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.reverb = clamp(0, Config.reverbRange, advance());
                 }
                 // Clamp the range.
                 instrument.effects &= (1 << EffectType.length) - 1;
@@ -3784,7 +3851,7 @@ export class Song {
             case SongTagCode.volume: {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
                 // Volume is stored in two bytes in jummbox just in case range ever exceeds one byte, e.g. through later waffling on the subject.
-                instrument.volume = Math.round(clamp(-Config.volumeRange / 2, Config.volumeRange / 2 + 1, ((base64CharCodeToInt[compressed.charCodeAt(charIndex++)] << 6) | (base64CharCodeToInt[compressed.charCodeAt(charIndex++)])) - Config.volumeRange / 2));
+                instrument.volume = Math.round(clamp(-Config.volumeRange / 2, Config.volumeRange / 2 + 1, ((advance() << 6) | (advance())) - Config.volumeRange / 2));
             } break;
             case SongTagCode.pan: {
                 // Do nothing? This song tag code is deprecated for now.
@@ -3797,7 +3864,7 @@ export class Song {
                 // Pop custom wave values
                 for (let j: number = 0; j < 64; j++) {
                     instrument.customChipWave[j]
-                        = clamp(-24, 25, base64CharCodeToInt[compressed.charCodeAt(charIndex++)] - 24);
+                        = clamp(-24, 25, advance() - 24);
                 }
 
                 let sum: number = 0.0;
@@ -3819,7 +3886,7 @@ export class Song {
                 instrument.customChipWaveIntegral[64] = 0.0;
             } break;
             case SongTagCode.limiterSettings: {
-                let nextValue: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                let nextValue: number = advance();
 
                 // Check if limiter settings are used... if not, restore to default
                 if (nextValue == 0x3f) {
@@ -3828,22 +3895,22 @@ export class Song {
                 else {
                     // Limiter is used, grab values
                     this.compressionRatio = (nextValue < 10 ? nextValue / 10 : (1 + (nextValue - 10) / 60));
-                    nextValue = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                    nextValue = advance();
                     this.limitRatio = (nextValue < 10 ? nextValue / 10 : (nextValue - 9));
-                    this.limitDecay = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
-                    this.limitRise = (base64CharCodeToInt[compressed.charCodeAt(charIndex++)] * 250.0) + 2000.0;
-                    this.compressionThreshold = base64CharCodeToInt[compressed.charCodeAt(charIndex++)] / 20.0;
-                    this.limitThreshold = base64CharCodeToInt[compressed.charCodeAt(charIndex++)] / 20.0;
-                    this.masterGain = ((base64CharCodeToInt[compressed.charCodeAt(charIndex++)] << 6) + base64CharCodeToInt[compressed.charCodeAt(charIndex++)]) / 50.0;
+                    this.limitDecay = advance();
+                    this.limitRise = (advance() * 250.0) + 2000.0;
+                    this.compressionThreshold = advance() / 20.0;
+                    this.limitThreshold = advance() / 20.0;
+                    this.masterGain = ((advance() << 6) + advance()) / 50.0;
                 }
             } break;
             case SongTagCode.algorithm: {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
                 if (instrument.type == InstrumentType.fm) {
-                    instrument.algorithm = clamp(0, Config.algorithms.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.algorithm = clamp(0, Config.algorithms.length, advance());
                 }
                 else {
-                    instrument.algorithm6Op = clamp(0, Config.algorithms6Op.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.algorithm6Op = clamp(0, Config.algorithms6Op.length, advance());
                     instrument.customAlgorithm.fromPreset(instrument.algorithm6Op);
                     if (compressed.charCodeAt(charIndex) == SongTagCode.chord) {
                         let carrierCountTemp = clamp(1, Config.operatorCount + 2+1, base64CharCodeToInt[compressed.charCodeAt(charIndex + 1)]);
@@ -3872,17 +3939,17 @@ export class Song {
             } break;
             case SongTagCode.supersaw: {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
-                instrument.supersawDynamism = clamp(0, Config.supersawDynamismMax + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                instrument.supersawSpread = clamp(0, Config.supersawSpreadMax + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                instrument.supersawShape = clamp(0, Config.supersawShapeMax + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                instrument.supersawDynamism = clamp(0, Config.supersawDynamismMax + 1, advance());
+                instrument.supersawSpread = clamp(0, Config.supersawSpreadMax + 1, advance());
+                instrument.supersawShape = clamp(0, Config.supersawShapeMax + 1, advance());
 			} break;
             case SongTagCode.feedbackType: {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
                 if (instrument.type == InstrumentType.fm) {
-                    instrument.feedbackType = clamp(0, Config.feedbacks.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.feedbackType = clamp(0, Config.feedbacks.length, advance());
                 }
                 else {
-                    instrument.feedbackType6Op = clamp(0, Config.feedbacks6Op.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.feedbackType6Op = clamp(0, Config.feedbacks6Op.length, advance());
                     instrument.customFeedbackType.fromPreset(instrument.feedbackType6Op);
                     let tempModArray: number[][] = [];
                     if (compressed.charCodeAt(charIndex) == SongTagCode.effects) {
@@ -3906,7 +3973,7 @@ export class Song {
 
             } break;
             case SongTagCode.feedbackAmplitude: {
-                this.channels[currentChannelIndex].instruments[instrumentIndexIterator].feedbackAmplitude = clamp(0, Config.operatorAmplitudeMax + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                this.channels[currentChannelIndex].instruments[instrumentIndexIterator].feedbackAmplitude = clamp(0, Config.operatorAmplitudeMax + 1, advance());
             } break;
             case SongTagCode.feedbackEnvelope: {
                 // Do nothing? This song tag code is deprecated for now.
@@ -3914,29 +3981,29 @@ export class Song {
             case SongTagCode.operatorFrequencies: {
                 const instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
                 for (let o = 0; o < (instrument.type == InstrumentType.fm6op ? 6 : Config.operatorCount); o++) {
-                    instrument.operators[o].frequency = clamp(0, Config.operatorFrequencies.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.operators[o].frequency = clamp(0, Config.operatorFrequencies.length, advance());
                 }
             } break;
             case SongTagCode.operatorAmplitudes: {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
                 for (let o: number = 0; o < (instrument.type == InstrumentType.fm6op ? 6 : Config.operatorCount); o++) {
-                    instrument.operators[o].amplitude = clamp(0, Config.operatorAmplitudeMax + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.operators[o].amplitude = clamp(0, Config.operatorAmplitudeMax + 1, advance());
                 }
             } break;
             case SongTagCode.envelopes: {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
-                const envelopeCount: number = clamp(0, Config.maxEnvelopeCount + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                const envelopeCount: number = clamp(0, Config.maxEnvelopeCount + 1, advance());
                 // JB v6 adds some envelope options here in the sequence.
-                instrument.envelopeSpeed = clamp(0, Config.modulators.dictionary["envelope speed"].maxRawVol + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
-                instrument.discreteEnvelope = (base64CharCodeToInt[compressed.charCodeAt(charIndex++)]) ? true : false;
+                instrument.envelopeSpeed = clamp(0, Config.modulators.dictionary["envelope speed"].maxRawVol + 1, advance());
+                instrument.discreteEnvelope = (advance()) ? true : false;
                 for (let i: number = 0; i < envelopeCount; i++) {
-                    const target: number = clamp(0, Config.instrumentAutomationTargets.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    const target: number = clamp(0, Config.instrumentAutomationTargets.length, advance());
                     let index: number = 0;
                     const maxCount: number = Config.instrumentAutomationTargets[target].maxCount;
                     if (maxCount > 1) {
-                        index = clamp(0, maxCount, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                        index = clamp(0, maxCount, advance());
                     }
-                    let aa: number = base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                    let aa: number = advance();
                     const envelope: number = clamp(0, Config.envelopes.length, aa);
                     instrument.addEnvelope(target, index, envelope);
                 }
@@ -3944,10 +4011,10 @@ export class Song {
             case SongTagCode.operatorWaves: {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];
                 for (let o: number = 0; o < (instrument.type == InstrumentType.fm6op ? 6 : Config.operatorCount); o++) {
-                    instrument.operators[o].waveform = clamp(0, Config.operatorWaves.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                    instrument.operators[o].waveform = clamp(0, Config.operatorWaves.length, advance());
                     // Pulse width follows, if it is a pulse width operator wave
                     if (instrument.operators[o].waveform == 2) {
-                        instrument.operators[o].pulseWidth = clamp(0, Config.pwmOperatorWaves.length, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                        instrument.operators[o].pulseWidth = clamp(0, Config.pwmOperatorWaves.length, advance());
                     }
                 }
             } break;
@@ -3987,7 +4054,7 @@ export class Song {
             } break;
             case SongTagCode.aliases: {
                 const instrument: Instrument = this.channels[currentChannelIndex].instruments[instrumentIndexIterator];  
-                instrument.decimalOffset = clamp(0, 50 + 1, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                instrument.decimalOffset = clamp(0, 50 + 1, advance());
             } break;
             case SongTagCode.bars: {
                 let subStringLength: number;
@@ -4008,10 +4075,10 @@ export class Song {
                 let bitStringLength: number = 0;
                 let recentPitchBitLength: number = 4;
                 let recentPitchLength: number = 16;
-                let bitStringLengthLength: number = validateRange(1, 4, base64CharCodeToInt[compressed.charCodeAt(charIndex++)]);
+                let bitStringLengthLength: number = validateRange(1, 4, advance());
                 while (bitStringLengthLength > 0) {
                     bitStringLength = bitStringLength << 6;
-                    bitStringLength += base64CharCodeToInt[compressed.charCodeAt(charIndex++)];
+                    bitStringLength += advance();
                     bitStringLengthLength--;
                 }
 

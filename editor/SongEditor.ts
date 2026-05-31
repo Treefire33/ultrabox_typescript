@@ -17,7 +17,7 @@ import { ExportPrompt } from "./ExportPrompt";
 import "./Layout"; // Imported here for the sake of ensuring this code is transpiled early.
 import { Synth } from "../synth/synth";
 import { Instrument } from "../synth/Instrument";
-import { Channel } from "../synth/Pattern";
+import { Channel, ChannelType } from "../synth/Pattern";
 import { HTML, SVG } from "imperative-html/dist/esm/elements-strict";
 import { Preferences } from "./Preferences";
 import { HarmonicsEditor, HarmonicsEditorPrompt } from "./HarmonicsEditor";
@@ -2165,8 +2165,9 @@ export class SongEditor {
         const trackBounds: DOMRect = this._trackVisibleArea.getBoundingClientRect();
         this._doc.trackVisibleBars = Math.floor((trackBounds.right - trackBounds.left - (prefs.enableChannelMuting ? 32 : 0)) / this._doc.getBarWidth());
         this._doc.trackVisibleChannels = Math.floor((trackBounds.bottom - trackBounds.top - 30) / ChannelRow.patternHeight);
-        for (let i: number = this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount; i < this._doc.song.channels.length; i++) {
+        for (let i: number = 0; i < this._doc.song.channels.length; i++) {
             const channel: Channel = this._doc.song.channels[i];
+            if (channel.channelType != ChannelType.mod) { continue; }
             for (let j: number = 0; j < channel.instruments.length; j++) {
                 this._doc.synth.determineInvalidModulators(channel.instruments[j]);
             }
@@ -2223,8 +2224,8 @@ export class SongEditor {
             this._patternEditorNext.container.style.display = "";
             this._patternEditorPrev.render();
             this._patternEditorNext.render();
-            this._zoomInButton.style.display = (this._doc.channel < this._doc.song.pitchChannelCount) ? "" : "none";
-            this._zoomOutButton.style.display = (this._doc.channel < this._doc.song.pitchChannelCount) ? "" : "none";
+            this._zoomInButton.style.display = (this._doc.channel < this._doc.song.getChannelTypeCount(ChannelType.pitch)) ? "" : "none";
+            this._zoomOutButton.style.display = (this._doc.channel < this._doc.song.getChannelTypeCount(ChannelType.pitch)) ? "" : "none";
             this._zoomInButton.style.right = prefs.showScrollBar ? "24px" : "4px";
             this._zoomOutButton.style.right = prefs.showScrollBar ? "24px" : "4px";
         } else {
@@ -2893,41 +2894,39 @@ export class SongEditor {
             this._modulatorGroup.style.color = ColorConfig.getChannelColor(this._doc.song, this._doc.channel).primaryNote;
 
             for (let mod: number = 0; mod < Config.modCount; mod++) {
-
                 let instrument: Instrument = this._doc.song.channels[this._doc.channel].instruments[this._doc.getCurrentInstrument()];
                 let modChannel: number = Math.max(0, instrument.modChannels[mod]);
                 let modInstrument: number = instrument.modInstruments[mod];
 
-                // Boundary checking
-                if (modInstrument >= this._doc.song.channels[modChannel].instruments.length + 2 || (modInstrument > 0 && this._doc.song.channels[modChannel].instruments.length <= 1)) {
-                    modInstrument = 0;
-                    instrument.modInstruments[mod] = 0;
-                }
-                if (modChannel >= this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount) {
-                    instrument.modInstruments[mod] = 0;
-                    instrument.modulators[mod] = 0;
-                }
+                // Boundary checking (might be useless?)
+                // if (modInstrument >= this._doc.song.channels[modChannel].instruments.length + 2 || (modInstrument > 0 && this._doc.song.channels[modChannel].instruments.length <= 1)) {
+                //     modInstrument = 0;
+                //     instrument.modInstruments[mod] = 0;
+                // }
+                // if (modChannel >= this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount) {
+                //     instrument.modInstruments[mod] = 0;
+                //     instrument.modulators[mod] = 0;
+                // }
 
                 // Build options for modulator channels (make sure it has the right number).
-                if (this._doc.recalcChannelNames || (this._modChannelBoxes[mod].children.length != 2 + this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount)) {
+                if (this._doc.recalcChannelNames /* || (this._modChannelBoxes[mod].children.length != 2 + this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount)*/) {
                     while (this._modChannelBoxes[mod].firstChild) this._modChannelBoxes[mod].remove(0);
                     const channelList: string[] = [];
                     channelList.push("none");
                     channelList.push("song");
-                    for (let i: number = 0; i < this._doc.song.pitchChannelCount; i++) {
+
+                    let pitchCount: number = 1;
+                    let noiseCount: number = 1;
+                    for (let i: number = 0; i < this._doc.song.channels.length; i++) {
+                        const channel: Channel = this._doc.song.channels[i];
+                        if (channel.channelType == ChannelType.mod || channel.channelType == ChannelType.comment) { continue; }
+
                         if (this._doc.song.channels[i].name == "") {
-                            channelList.push("pitch " + (i + 1));
+                            let listPrefix = channel.channelType == ChannelType.pitch ? "pitch: " : "noise: ";
+                            channelList.push(listPrefix + (channel.channelType == ChannelType.pitch ? pitchCount++ : noiseCount++));
                         }
                         else {
                             channelList.push(this._doc.song.channels[i].name);
-                        }
-                    }
-                    for (let i: number = 0; i < this._doc.song.noiseChannelCount; i++) {
-                        if (this._doc.song.channels[i + this._doc.song.pitchChannelCount].name == "") {
-                            channelList.push("noise " + (i + 1));
-                        }
-                        else {
-                            channelList.push(this._doc.song.channels[i + this._doc.song.pitchChannelCount].name);
                         }
                     }
                     buildOptions(this._modChannelBoxes[mod], channelList);
@@ -3390,7 +3389,7 @@ export class SongEditor {
             this._instrumentSettingsGroup.style.color = ColorConfig.getChannelColor(this._doc.song, this._doc.channel).primaryNote;
 
             // Force piano to re-show, if channel is modulator
-            if (this._doc.channel >= this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount) {
+            if (this._doc.song.channels[this._doc.channel].channelType == ChannelType.mod) {
                 this._piano.forceRender();
             }
 
@@ -3515,7 +3514,7 @@ export class SongEditor {
                 this._highlightedInstrumentIndex = -1;
             }
 
-            if (this._doc.song.layeredInstruments && this._doc.song.patternInstruments && (this._doc.channel < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount)) {
+            if (this._doc.song.layeredInstruments && this._doc.song.patternInstruments && (this._doc.song.channels[this._doc.channel].channelType < ChannelType.mod)) {
                 //const pattern: Pattern | null = this._doc.getCurrentPattern();
                 for (let i: number = 0; i < channel.instruments.length; i++) {
                     if (this._doc.recentPatternInstruments[this._doc.channel].indexOf(i) != -1) {
@@ -3525,7 +3524,7 @@ export class SongEditor {
                     }
                 }
                 this._deactivatedInstruments = true;
-            } else if (this._deactivatedInstruments || (this._doc.channel >= this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount)) {
+            } else if (this._deactivatedInstruments || (this._doc.song.channels[this._doc.channel].channelType == ChannelType.mod)) {
                 for (let i: number = 0; i < channel.instruments.length; i++) {
 
                     this._instrumentButtons[i].classList.remove("deactivated");
@@ -3533,7 +3532,7 @@ export class SongEditor {
                 this._deactivatedInstruments = false;
             }
 
-            if ((this._doc.song.layeredInstruments && this._doc.song.patternInstruments) && channel.instruments.length > 1 && (this._doc.channel < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount)) {
+            if ((this._doc.song.layeredInstruments && this._doc.song.patternInstruments) && channel.instruments.length > 1 && (this._doc.song.channels[this._doc.channel].channelType < ChannelType.mod)) {
                 for (let i: number = 0; i < channel.instruments.length; i++) {
                     this._instrumentButtons[i].classList.remove("no-underline");
                 }
@@ -3634,21 +3633,22 @@ export class SongEditor {
         var modUsed = false;
         const channel: Channel = this._doc.song.channels[channelIndex];
 
-        if (channelIndex < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount) {
-            for (let modChannelIdx: number = this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount; modChannelIdx < this._doc.song.channels.length; modChannelIdx++) {
-                const modChannel: Channel = this._doc.song.channels[modChannelIdx];
-                const patternIdx = modChannel.bars[this._doc.bar];
-                if (patternIdx > 0) {
-                    const modInstrumentIdx: number = modChannel.patterns[patternIdx - 1].instruments[0];
-                    const modInstrument: Instrument = modChannel.instruments[modInstrumentIdx];
-                    for (let mod: number = 0; mod < Config.modCount; mod++) {
-                        if (modInstrument.modChannels[mod] == channelIndex && (modInstrument.modInstruments[mod] == instrumentIndex || modInstrument.modInstruments[mod] >= channel.instruments.length)) {
-                            modUsed = true;
-                        }
-                    }
-                }
-            }
-        }
+        // idk how to do this
+        // if (channel.channelType < ChannelType.mod) {
+        //     for (let modChannelIdx: number = channelIndex; modChannelIdx < this._doc.song.channels.length; modChannelIdx++) {
+        //         const modChannel: Channel = this._doc.song.channels[modChannelIdx];
+        //         const patternIdx = modChannel.bars[this._doc.bar];
+        //         if (patternIdx > 0) {
+        //             const modInstrumentIdx: number = modChannel.patterns[patternIdx - 1].instruments[0];
+        //             const modInstrument: Instrument = modChannel.instruments[modInstrumentIdx];
+        //             for (let mod: number = 0; mod < Config.modCount; mod++) {
+        //                 if (modInstrument.modChannels[mod] == channelIndex && (modInstrument.modInstruments[mod] == instrumentIndex || modInstrument.modInstruments[mod] >= channel.instruments.length)) {
+        //                     modUsed = true;
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
         let lowestSelX: number = Math.min(this._doc.selection.boxSelectionX0, this._doc.selection.boxSelectionX1);
         let highestSelX: number = Math.max(this._doc.selection.boxSelectionX0, this._doc.selection.boxSelectionX1);
@@ -3697,7 +3697,7 @@ export class SongEditor {
             this._jumpToModIndicator.style.setProperty("fill", ColorConfig.indicatorPrimary);
             this._jumpToModIndicator.classList.add("modTarget");
         }
-        else if (channelIndex < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount) {
+        else if (channel.channelType < ChannelType.mod) {
             this._jumpToModIndicator.style.setProperty("display", "");
             this._jumpToModIndicator.style.setProperty("fill", ColorConfig.indicatorSecondary);
             this._jumpToModIndicator.classList.remove("modTarget");
@@ -3995,7 +3995,7 @@ export class SongEditor {
                 if (canPlayNotes) break;
                 if (event.shiftKey) {
                     const instrument: Instrument = this._doc.song.channels[this._doc.channel].instruments[this._doc.getCurrentInstrument()];
-                    if (!instrument.eqFilterType && this._doc.channel < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount)
+                    if (!instrument.eqFilterType && this._doc.song.channels[this._doc.channel].channelType < ChannelType.mod)
                         this._openPrompt("customEQFilterSettings");
                 } else if (needControlForShortcuts == (event.ctrlKey || event.metaKey)) {
                     // EUCLEDIAN RHYTHM SHORTCUT (E)
@@ -4109,7 +4109,7 @@ export class SongEditor {
 
                 if (event.shiftKey) {
                     const instrument: Instrument = this._doc.song.channels[this._doc.channel].instruments[this._doc.getCurrentInstrument()];
-                    if (effectsIncludeNoteFilter(instrument.effects) && !instrument.noteFilterType && this._doc.channel < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount)
+                    if (effectsIncludeNoteFilter(instrument.effects) && !instrument.noteFilterType && this._doc.song.channels[this._doc.channel].channelType < ChannelType.mod)
                         this._openPrompt("customNoteFilterSettings");
                     break;
                 }
@@ -4133,9 +4133,9 @@ export class SongEditor {
                         group.append(new ChangePatternNumbers(this._doc, nextEmpty, this._doc.bar, this._doc.channel, 1, 1));
 
                         // Auto set the used instruments to the ones you were most recently viewing.
-                        if (this._doc.channel >= this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount)
+                        if (this._doc.song.channels[this._doc.channel].channelType >= ChannelType.mod)
                         {
-                                this._doc.viewedInstrument[this._doc.channel] = this._doc.recentPatternInstruments[this._doc.channel][0];
+                            this._doc.viewedInstrument[this._doc.channel] = this._doc.recentPatternInstruments[this._doc.channel][0];
                         }
                         group.append(new ChangeSetPatternInstruments(this._doc, this._doc.channel, this._doc.recentPatternInstruments[this._doc.channel],  this._doc.song.channels[this._doc.channel].patterns[nextEmpty-1]));
 
@@ -4160,9 +4160,9 @@ export class SongEditor {
                         group.append(new ChangePatternNumbers(this._doc, nextUnused, this._doc.bar, this._doc.channel, 1, 1));
 
                         // Auto set the used instruments to the ones you were most recently viewing.
-                        if (this._doc.channel >= this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount)
+                        if (this._doc.song.channels[this._doc.channel].channelType >= ChannelType.mod)
                         {
-                                this._doc.viewedInstrument[this._doc.channel] = this._doc.recentPatternInstruments[this._doc.channel][0];
+                            this._doc.viewedInstrument[this._doc.channel] = this._doc.recentPatternInstruments[this._doc.channel][0];
                         }
                         group.append(new ChangeSetPatternInstruments(this._doc, this._doc.channel, this._doc.recentPatternInstruments[this._doc.channel],  this._doc.song.channels[this._doc.channel].patterns[nextUnused-1]));                               
 
@@ -4780,7 +4780,7 @@ export class SongEditor {
                 this._doc.selection.selectInstrument(index);
             }
             // Force piano to re-show, if channel is modulator
-            if (this._doc.channel >= this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount) {
+            if (this._doc.song.channels[this._doc.channel].channelType >= ChannelType.mod) {
                 this._piano.forceRender();
             }
 		this._renderInstrumentBar(this._doc.song.channels[this._doc.channel], index, ColorConfig.getChannelColor(this._doc.song, this._doc.channel));
@@ -4848,22 +4848,23 @@ export class SongEditor {
     private _whenClickJumpToModTarget = (): void => {
         const channelIndex: number = this._doc.channel;
         const instrumentIndex: number = this._doc.getCurrentInstrument();
-        if (channelIndex < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount) {
-            for (let modChannelIdx: number = this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount; modChannelIdx < this._doc.song.channels.length; modChannelIdx++) {
-                const modChannel: Channel = this._doc.song.channels[modChannelIdx];
-                const patternIdx = modChannel.bars[this._doc.bar];
-                if (patternIdx > 0) {
-                    const modInstrumentIdx: number = modChannel.patterns[patternIdx - 1].instruments[0];
-                    const modInstrument: Instrument = modChannel.instruments[modInstrumentIdx];
-                    for (let mod: number = 0; mod < Config.modCount; mod++) {
-                        if (modInstrument.modChannels[mod] == channelIndex && (modInstrument.modInstruments[mod] == instrumentIndex || modInstrument.modInstruments[mod] >= this._doc.song.channels[channelIndex].instruments.length)) {
-                            this._doc.selection.setChannelBar(modChannelIdx, this._doc.bar);
-                            return;
-                        }
-                    }
-                }
-            }
-        }
+        // yeah idk
+        // if (channelIndex < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount) {
+        //     for (let modChannelIdx: number = this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount; modChannelIdx < this._doc.song.channels.length; modChannelIdx++) {
+        //         const modChannel: Channel = this._doc.song.channels[modChannelIdx];
+        //         const patternIdx = modChannel.bars[this._doc.bar];
+        //         if (patternIdx > 0) {
+        //             const modInstrumentIdx: number = modChannel.patterns[patternIdx - 1].instruments[0];
+        //             const modInstrument: Instrument = modChannel.instruments[modInstrumentIdx];
+        //             for (let mod: number = 0; mod < Config.modCount; mod++) {
+        //                 if (modInstrument.modChannels[mod] == channelIndex && (modInstrument.modInstruments[mod] == instrumentIndex || modInstrument.modInstruments[mod] >= this._doc.song.channels[channelIndex].instruments.length)) {
+        //                     this._doc.selection.setChannelBar(modChannelIdx, this._doc.bar);
+        //                     return;
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     private _whenSetModFilter = (mod: number): void => {
