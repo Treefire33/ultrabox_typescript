@@ -27,9 +27,9 @@ export class OctaveScrollBar {
 	private _mouseDown: boolean = false;
 	private _mouseOver: boolean = false;
 	private _dragging: boolean = false;
-	private _dragStart: number;
-	private _barBottom: number;
-	private _barHeight: number;
+	private _dragStart!: number;
+	private _barBottom!: number;
+	private _barHeight!: number;
 	private _renderedBarBottom: number = -1;
 	private _renderedVisibleOctaveCount: number = -1;
 	private _change: ChangeOctave | null = null;

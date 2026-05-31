@@ -27,6 +27,9 @@
 			"ES2021",
 			"ES2022",
 			"ESNext"
+		],
+		"types": [
+			"jquery", "select2"
 		]
 	}
 }

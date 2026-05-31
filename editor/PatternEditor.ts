@@ -1,7 +1,11 @@
 // Copyright (c) 2012-2022 John Nesky and contributing authors, distributed under the MIT license, see accompanying the LICENSE.md file.
 
 import { getLocalStorageItem, Chord, Transition, Config } from "../synth/SynthConfig";
-import { NotePin, Note, makeNotePin, FilterSettings, Channel, Pattern, Instrument, FilterControlPoint } from "../synth/synth";
+import { FilterControlPoint } from "../synth/FilterControlPoint";
+import { FilterSettings } from "../synth/FilterSettings";
+import { NotePin, Note, makeNotePin } from "../synth/Note";
+import { Channel, Pattern } from "../synth/Pattern";
+import { Instrument } from "../synth/Instrument";
 import { ColorConfig } from "./ColorConfig";
 import { SongDocument } from "./SongDocument";
 import { Slider } from "./HTMLWrapper";
@@ -64,24 +68,24 @@ export class PatternEditor {
     private readonly _backgroundDrumRow: SVGRectElement = SVG.rect();
     private readonly _backgroundModRow: SVGRectElement = SVG.rect();
 
-    private _editorWidth: number;
+    private _editorWidth!: number;
 
     private _modDragValueLabelLeft: number = 0;
     private _modDragValueLabelTop: number = 0;
     private _modDragValueLabelWidth: number = 0;
     public editingModLabel: boolean = false;
     private _modDragStartValue: number = 0;
-    private _modDragPin: NotePin;
-    private _modDragNote: Note;
-    private _modDragSetting: number;
+    private _modDragPin!: NotePin;
+    private _modDragNote!: Note;
+    private _modDragSetting!: number;
     private _modDragLowerBound: number = 0;
     private _modDragUpperBound: number = 6;
 
-    private _editorHeight: number;
-    private _partWidth: number;
+    private _editorHeight!: number;
+    private _partWidth!: number;
     private _pitchHeight: number = -1;
-    private _pitchBorder: number;
-    private _pitchCount: number;
+    private _pitchBorder!: number;
+    private _pitchCount!: number;
     private _mouseX: number = 0;
     private _mouseY: number = 0;
     private _mouseDown: boolean = false;
@@ -90,7 +94,7 @@ export class PatternEditor {
     private _mouseHorizontal: boolean = false;
     private _usingTouch: boolean = false;
     private _copiedPinChannels: NotePin[][] = [];
-    private _copiedPins: NotePin[];
+    private _copiedPins!: NotePin[];
     private _mouseXStart: number = 0;
     private _mouseYStart: number = 0;
     private _touchTime: number = 0;

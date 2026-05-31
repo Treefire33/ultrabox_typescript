@@ -31,8 +31,8 @@ export class BarScrollBar {
 	private _mouseDown: boolean = false;
 	private _mouseOver: boolean = false;
 	private _dragging: boolean = false;
-	private _dragStart: number;
-	private _notchSpace: number;
+	private _dragStart!: number;
+	private _notchSpace!: number;
 	private _renderedNotchCount: number = -1;
 	private _renderedScrollBarPos: number = -1;
 	

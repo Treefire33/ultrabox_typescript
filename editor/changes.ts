@@ -1,7 +1,16 @@
 // Copyright (c) 2012-2022 John Nesky and contributing authors, distributed under the MIT license, see accompanying the LICENSE.md file.
 
 import { Algorithm, Dictionary, FilterType, SustainType, InstrumentType, EffectType, AutomationTarget, Config, effectsIncludeDistortion } from "../synth/SynthConfig";
-import { NotePin, Note, makeNotePin, Pattern, FilterSettings, FilterControlPoint, SpectrumWave, HarmonicsWave, Instrument, Channel, Song, Synth, clamp } from "../synth/synth";
+import { Synth } from "../synth/synth";
+import { NotePin, Note, makeNotePin } from "../synth/Note";
+import { Pattern, Channel } from "../synth/Pattern";
+import { FilterSettings } from "../synth/FilterSettings";
+import { FilterControlPoint } from "../synth/FilterControlPoint";
+import { HarmonicsWave } from "../synth/HarmonicsWave";
+import { SpectrumWave } from "../synth/SpectrumWave";
+import { clamp } from "../synth/Utilities";
+import { Instrument } from "../synth/Instrument";
+import { Song } from "../synth/Song";
 import { Preset, PresetCategory, EditorConfig } from "./EditorConfig";
 import { Change, ChangeGroup, ChangeSequence, UndoableChange } from "./Change";
 import { SongDocument } from "./SongDocument";

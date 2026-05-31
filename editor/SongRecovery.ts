@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2022 John Nesky and contributing authors, distributed under the MIT license, see accompanying the LICENSE.md file.
 
 import { Dictionary } from "../synth/SynthConfig";
-import { Song } from "../synth/synth";
+import { Song } from "../synth/Song";
 
 	
 export interface RecoveredVersion {
@@ -52,7 +52,7 @@ function compareVersions(a: RecoveredVersion, b: RecoveredVersion): number {
 }
 		
 export class SongRecovery {
-	private _saveVersionTimeoutHandle: ReturnType<typeof setTimeout>;
+	private _saveVersionTimeoutHandle!: ReturnType<typeof setTimeout>;
 		
 	private _song: Song = new Song();
 		

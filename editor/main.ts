@@ -4,8 +4,12 @@ import { Dictionary, DictionaryArray, EnvelopeType, InstrumentType, Transition, 
 import { isMobile, EditorConfig } from "./EditorConfig";
 import { ColorConfig } from "./ColorConfig";
 import "./style"; // Import for the side effects, there's no exports.
-import {SongEditor} from "./SongEditor";
-import {NotePin, Note, Pattern, Instrument, Channel, Song, Synth} from "../synth/synth";
+import { SongEditor } from "./SongEditor";
+import { Synth } from "../synth/synth";
+import { Song } from "../synth/Song";
+import { NotePin, Note } from "../synth/Note";
+import { Pattern, Channel } from "../synth/Pattern";
+import { Instrument } from "../synth/Instrument";
 import {SongDocument} from "./SongDocument";
 import {ExportPrompt} from "./ExportPrompt";
 import {ChangePreset} from "./changes";
@@ -121,4 +125,4 @@ if ("serviceWorker" in navigator) {
 }
 
 // When compiling synth.ts as a standalone module named "beepbox", expose these classes as members to JavaScript:
-	export {Dictionary, DictionaryArray, EnvelopeType, InstrumentType, Transition, Chord, Envelope, Config, NotePin, Note, Pattern, Instrument, Channel, Song, Synth, ColorConfig, EditorConfig, SongDocument, SongEditor, ExportPrompt, ChangePreset};
+export {Dictionary, DictionaryArray, EnvelopeType, InstrumentType, Transition, Chord, Envelope, Config, NotePin, Note, Pattern, Instrument, Channel, Song, Synth, ColorConfig, EditorConfig, SongDocument, SongEditor, ExportPrompt, ChangePreset};

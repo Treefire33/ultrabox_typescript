@@ -2,7 +2,9 @@
 
 import { FilterCoefficients, FrequencyResponse } from "../synth/filtering";
 import { FilterType, Config } from "../synth/SynthConfig";
-import { FilterSettings, FilterControlPoint, Instrument } from "../synth/synth";
+import { FilterSettings } from "../synth/FilterSettings";
+import { FilterControlPoint } from "../synth/FilterControlPoint";
+import { Instrument } from "../synth/Instrument";
 import { SongDocument } from "./SongDocument";
 import { HTML, SVG } from "imperative-html/dist/esm/elements-strict";
 import { ColorConfig } from "./ColorConfig";
@@ -56,8 +58,8 @@ export class FilterEditor {
     private _dragChange: UndoableChange | null = null;
     private _subfilterIndex: number = 0;
 
-    private _filterSettings: FilterSettings;
-    private _useFilterSettings: FilterSettings;
+    private _filterSettings!: FilterSettings;
+    private _useFilterSettings!: FilterSettings;
     private _renderedSelectedIndex: number = -1;
     private _renderedPointCount: number = -1;
     private _renderedPointTypes: number = -1;

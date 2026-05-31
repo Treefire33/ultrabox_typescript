@@ -2,7 +2,9 @@
 
 import {Config} from "../synth/SynthConfig";
 import {EditorConfig, isMobile} from "./EditorConfig";
-import {Pattern, Channel, Song, Synth} from "../synth/synth";
+import { Synth } from "../synth/synth";
+import { Song } from "../synth/Song";
+import { Pattern, Channel } from "../synth/Pattern";
 import { SongRecovery, generateUid, errorAlert } from "./SongRecovery";
 import { ColorConfig } from "./ColorConfig";
 import { Layout } from "./Layout";
@@ -25,8 +27,8 @@ interface HistoryState {
 }
 
 export class SongDocument {
-	public colorTheme: string;
-	public song: Song;
+	public colorTheme!: string;
+	public song!: Song;
 	public synth: Synth;
 	public performance: SongPerformance;
 	public readonly notifier: ChangeNotifier = new ChangeNotifier();
@@ -35,7 +37,7 @@ export class SongDocument {
 	public channel: number = 0;
 	public muteEditorChannel: number = 0;
 	public bar: number = 0;
-	public recalcChannelNames: boolean;
+	public recalcChannelNames!: boolean;
 	public recentPatternInstruments: number[][] = [];
 	public viewedInstrument: number[] = [];
 	public recordingModulators: boolean = false;
@@ -50,7 +52,7 @@ export class SongDocument {
 	public addedEffect: boolean = false;
 	public addedEnvelope: boolean = false;
 	public currentPatternIsDirty: boolean = false;
-	public modRecordingHandler: () => void;
+	public modRecordingHandler!: () => void;
 	
 	private static readonly _maximumUndoHistory: number = 300;
 	private _recovery: SongRecovery = new SongRecovery();

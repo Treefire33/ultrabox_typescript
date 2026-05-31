@@ -4,7 +4,7 @@ import { Config } from "../synth/SynthConfig";
 import { SongDocument } from "./SongDocument";
 import { HTML, SVG } from "imperative-html/dist/esm/elements-strict";
 import { ColorConfig } from "./ColorConfig";
-import { Instrument } from "../synth/synth";
+import { Instrument } from "../synth/Instrument";
 import { modulatorStrings } from "./ModulatorStrings";
 
 export class Piano {
@@ -26,13 +26,13 @@ export class Piano {
 	private readonly _modCountLabels: SVGTextElement[] = [];
 	private readonly _modCountRects: SVGRectElement[] = [];
 		
-	private _pitchHeight: number;
-	private _pitchCount: number;
+	private _pitchHeight!: number;
+	private _pitchCount!: number;
 	//private _mouseX: number = 0;
 	private _mouseY: number = 0;
 	private _mouseDown: boolean = false;
 	private _mouseOver: boolean = false;
-	private _cursorPitch: number;
+	private _cursorPitch!: number;
 	private _playedPitch: number = -1;
 	private _renderedScale: number = -1;
 	private _renderedDrums: boolean = false;

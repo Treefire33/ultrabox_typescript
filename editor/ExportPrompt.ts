@@ -1,7 +1,11 @@
 // Copyright (c) 2012-2022 John Nesky and contributing authors, distributed under the MIT license, see accompanying the LICENSE.md file.
 
 import { InstrumentType, /*EnvelopeType,*/ Config, getArpeggioPitchIndex } from "../synth/SynthConfig";
-import { Instrument, Pattern, Note, Song, Synth } from "../synth/synth";
+import { Synth } from "../synth/synth";
+import { Song } from "../synth/Song";
+import { Note } from "../synth/Note";
+import { Pattern } from "../synth/Pattern";
+import { Instrument } from "../synth/Instrument";
 import { ColorConfig } from "./ColorConfig";
 import { Preset, EditorConfig } from "./EditorConfig";
 import { SongDocument } from "./SongDocument";
@@ -40,13 +44,13 @@ function save(blob: Blob, name: string): void {
 }
 
 export class ExportPrompt implements Prompt {
-    private synth: Synth;
-    private thenExportTo: string;
-    private recordedSamplesL: Float32Array;
-    private recordedSamplesR: Float32Array;
-    private sampleFrames: number;
-    private totalChunks: number;
-    private currentChunk: number;
+    private synth!: Synth;
+    private thenExportTo!: string;
+    private recordedSamplesL!: Float32Array;
+    private recordedSamplesR!: Float32Array;
+    private sampleFrames!: number;
+    private totalChunks!: number;
+    private currentChunk!: number;
     private outputStarted: boolean = false;
     private readonly _fileName: HTMLInputElement = input({ type: "text", style: "width: 10em;", value: Config.jsonFormat + "-Song", maxlength: 250, "autofocus": "autofocus" });
     private readonly _computedSamplesLabel: HTMLDivElement = div({ style: "width: 10em;" }, new Text("0:00"));

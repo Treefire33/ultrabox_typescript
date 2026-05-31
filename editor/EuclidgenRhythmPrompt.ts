@@ -8,7 +8,8 @@ import { ColorConfig, ChannelColors } from "./ColorConfig";
 import { prettyNumber } from "./EditorConfig";
 import { ChangeGroup } from "./Change";
 import { ChangeEnsurePatternExists, ChangePatternNumbers, ChangeNoteAdded, ChangeInsertBars } from "./changes";
-import { Note, NotePin, Pattern, makeNotePin } from "../synth/synth";
+import { Note, NotePin, makeNotePin } from "../synth/Note";
+import { Pattern } from "../synth/Pattern";
 
 const { button, div, h2, input } = HTML;
 
@@ -148,7 +149,7 @@ export class EuclideanRhythmPrompt implements Prompt {
 	private readonly _localStorageKey: string = "euclidGenMemory";
 
 	private readonly _sequences: Sequence[];
-	private _generatedSequences: (number[])[];
+	private _generatedSequences!: (number[])[];
 	private _sequenceIndex: number = 0;
 	private _renderedSequenceCount: number = 0;
 	private _highlightedSequenceIndex: number = -1;

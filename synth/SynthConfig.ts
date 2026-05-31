@@ -74,6 +74,7 @@ export const enum InstrumentType {
     mod,
 	fm6op,
     length,
+    unknown
 }
 
 export const TypePresets: ReadonlyArray<string> = ["chip", "FM", "noise", "spectrum", "drumset", "harmonics", "pulse width", "picked string", "supersaw", "chip (custom)", "mod", "FM (6-op)"];
