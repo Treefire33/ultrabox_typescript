@@ -5,7 +5,7 @@ import { FilterControlPoint } from "../synth/FilterControlPoint";
 import { FilterSettings } from "../synth/FilterSettings";
 import { NotePin, Note, makeNotePin } from "../synth/Note";
 import { Channel, Pattern } from "../synth/Pattern";
-import { Instrument } from "../synth/Instrument";
+import { Instrument } from "../synth/synth";
 import { ColorConfig } from "./ColorConfig";
 import { SongDocument } from "./SongDocument";
 import { Slider } from "./HTMLWrapper";

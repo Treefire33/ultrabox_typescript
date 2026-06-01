@@ -6,10 +6,10 @@ import { ColorConfig } from "./ColorConfig";
 import "./style"; // Import for the side effects, there's no exports.
 import { SongEditor } from "./SongEditor";
 import { Synth } from "../synth/synth";
-import { Song } from "../synth/Song";
+import { Song } from "../synth/synth";
 import { NotePin, Note } from "../synth/Note";
 import { Pattern, Channel } from "../synth/Pattern";
-import { Instrument } from "../synth/Instrument";
+import { Instrument } from "../synth/synth";
 import {SongDocument} from "./SongDocument";
 import {ExportPrompt} from "./ExportPrompt";
 import {ChangePreset} from "./changes";

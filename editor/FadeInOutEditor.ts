@@ -2,7 +2,7 @@
 
 import {Config} from "../synth/SynthConfig";
 import {Synth} from "../synth/synth";
-import {Instrument} from "../synth/Instrument";
+import { Instrument } from "../synth/synth";
 import {clamp} from "../synth/Utilities";
 import {SongDocument} from "./SongDocument";
 import {HTML, SVG} from "imperative-html/dist/esm/elements-strict";

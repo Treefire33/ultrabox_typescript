@@ -4,7 +4,7 @@ import { Config } from "../synth/SynthConfig";
 import { SongDocument } from "./SongDocument";
 import { HTML, SVG } from "imperative-html/dist/esm/elements-strict";
 import { ColorConfig } from "./ColorConfig";
-import { Instrument } from "../synth/Instrument";
+import { Instrument } from "../synth/synth";
 import { modulatorStrings } from "./ModulatorStrings";
 
 export class Piano {

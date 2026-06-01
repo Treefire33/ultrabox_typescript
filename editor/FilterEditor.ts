@@ -4,7 +4,7 @@ import { FilterCoefficients, FrequencyResponse } from "../synth/filtering";
 import { FilterType, Config } from "../synth/SynthConfig";
 import { FilterSettings } from "../synth/FilterSettings";
 import { FilterControlPoint } from "../synth/FilterControlPoint";
-import { Instrument } from "../synth/Instrument";
+import { Instrument } from "../synth/synth";
 import { SongDocument } from "./SongDocument";
 import { HTML, SVG } from "imperative-html/dist/esm/elements-strict";
 import { ColorConfig } from "./ColorConfig";

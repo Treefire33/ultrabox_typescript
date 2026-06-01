@@ -6,11 +6,11 @@ import { NotePin, Note, makeNotePin } from "../synth/Note";
 import { Pattern, Channel, ChannelType } from "../synth/Pattern";
 import { FilterSettings } from "../synth/FilterSettings";
 import { FilterControlPoint } from "../synth/FilterControlPoint";
-import { HarmonicsWave } from "../synth/HarmonicsWave";
-import { SpectrumWave } from "../synth/SpectrumWave";
+import { HarmonicsWave } from "../synth/synth";
+import { SpectrumWave } from "../synth/synth";
 import { clamp } from "../synth/Utilities";
-import { Instrument } from "../synth/Instrument";
-import { Song } from "../synth/Song";
+import { Instrument } from "../synth/synth";
+import { Song } from "../synth/synth";
 import { Preset, PresetCategory, EditorConfig } from "./EditorConfig";
 import { Change, ChangeGroup, ChangeSequence, UndoableChange } from "./Change";
 import { SongDocument } from "./SongDocument";
@@ -1883,8 +1883,8 @@ export class ChangeRemoveChannel extends ChangeGroup {
         }
 
 		while (maxIndex >= minIndex) {
-            const isNoise: boolean = doc.song.getChannelIsNoise(maxIndex);
-            const isMod: boolean = doc.song.getChannelIsMod(maxIndex);
+            // const isNoise: boolean = doc.song.getChannelIsNoise(maxIndex);
+            // const isMod: boolean = doc.song.getChannelIsMod(maxIndex);
 			doc.song.channels.splice(maxIndex, 1);
             // if (isNoise) {
             //     doc.song.noiseChannelCount--;

@@ -1,7 +1,7 @@
 // Copyright (c) 2012-2022 John Nesky and contributing authors, distributed under the MIT license, see accompanying the LICENSE.md file.
 
 import {InstrumentType, Config} from "../synth/SynthConfig";
-import {Instrument} from "../synth/Instrument";
+import { Instrument } from "../synth/synth";
 import {SongDocument} from "./SongDocument";
 import {ChangeSetEnvelopeTarget, ChangeSetEnvelopeType, ChangeRemoveEnvelope} from "./changes";
 import {HTML} from "imperative-html/dist/esm/elements-strict";

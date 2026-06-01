@@ -16,7 +16,7 @@ import { EuclideanRhythmPrompt } from "./EuclidgenRhythmPrompt";
 import { ExportPrompt } from "./ExportPrompt";
 import "./Layout"; // Imported here for the sake of ensuring this code is transpiled early.
 import { Synth } from "../synth/synth";
-import { Instrument } from "../synth/Instrument";
+import { Instrument } from "../synth/synth";
 import { Channel, ChannelType } from "../synth/Pattern";
 import { HTML, SVG } from "imperative-html/dist/esm/elements-strict";
 import { Preferences } from "./Preferences";

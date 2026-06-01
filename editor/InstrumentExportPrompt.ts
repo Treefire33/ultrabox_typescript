@@ -6,7 +6,7 @@ import { SongDocument } from "./SongDocument";
 import { Prompt } from "./Prompt";
 import { HTML } from "imperative-html/dist/esm/elements-strict";
 import { Channel } from "../synth/Pattern";
-import { Instrument } from "../synth/Instrument";
+import { Instrument } from "../synth/synth";
 
 const {button, div, h2, input, label, br} = HTML;
 export class InstrumentExportPrompt implements Prompt {

@@ -3,7 +3,7 @@
 import {Config} from "../synth/SynthConfig";
 import {EditorConfig, isMobile} from "./EditorConfig";
 import { Synth } from "../synth/synth";
-import { Song } from "../synth/Song";
+import { Song } from "../synth/synth";
 import { Pattern, Channel } from "../synth/Pattern";
 import { SongRecovery, generateUid, errorAlert } from "./SongRecovery";
 import { ColorConfig } from "./ColorConfig";

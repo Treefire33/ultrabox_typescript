@@ -2,10 +2,10 @@
 
 import { InstrumentType, /*EnvelopeType,*/ Config, getArpeggioPitchIndex } from "../synth/SynthConfig";
 import { Synth } from "../synth/synth";
-import { Song } from "../synth/Song";
+import { Song } from "../synth/synth";
 import { Note } from "../synth/Note";
 import { ChannelType, Pattern } from "../synth/Pattern";
-import { Instrument } from "../synth/Instrument";
+import { Instrument } from "../synth/synth";
 import { ColorConfig } from "./ColorConfig";
 import { Preset, EditorConfig } from "./EditorConfig";
 import { SongDocument } from "./SongDocument";

@@ -1,9 +1,10 @@
 import { Config } from "./SynthConfig";
 import { Note, NotePin } from "./Note";
-import { Instrument } from "./Instrument";
+import { Instrument } from "./synth";
 import { makeNotePin } from "./Note";
-import { Song } from "./Song";
+import { Song } from "./synth";
 import { clamp } from "./Utilities";
+import { InstrumentState } from "./synth";
 
 export enum ChannelType {
     pitch, noise,
@@ -207,4 +208,10 @@ export class Pattern {
             }
         }
     }
+}
+
+export class ChannelState {
+    public readonly instruments: InstrumentState[] = [];
+    public muted: boolean = false;
+    public singleSeamlessInstrument: number | null = null; // Seamless tones from a pattern with a single instrument can be transferred to a different single seamless instrument in the next pattern.
 }
