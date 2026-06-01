@@ -415,17 +415,18 @@ export class Song {
     public loopStart!: number;
     public loopLength!: number;
 
-    // public get pitchChannelCount(): number {
-    //     return this.getChannelTypeCount(ChannelType.pitch);
-    // }
-    // public get noiseChannelCount(): number {
-    //     return this.getChannelTypeCount(ChannelType.noise);
-    // }
-    // public get modChannelCount(): number {
-    //     return this.getChannelTypeCount(ChannelType.mod);
-    // }
+    public get pitchChannelCount(): number {
+        return this.getChannelTypeCount(ChannelType.pitch);
+    }
+    public get noiseChannelCount(): number {
+        return this.getChannelTypeCount(ChannelType.noise);
+    }
+    public get modChannelCount(): number {
+        return this.getChannelTypeCount(ChannelType.mod);
+    }
 
     public readonly channels: Channel[] = [];
+    public get channelCount(): number { return this.getChannelCount(); }
     public limitDecay: number = 4.0;
     public limitRise: number = 4000.0;
     public compressionThreshold: number = 1.0;

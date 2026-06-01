@@ -1,3 +1,5 @@
+import { Config } from "./SynthConfig";
+
 export class CustomFeedBack {
     public name: string = "";
     public indices: number[][] = [[], [], [], [], [], []];

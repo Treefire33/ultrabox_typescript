@@ -1,4 +1,7 @@
-import { InstrumentState } from "./temp";
+import { warpInfinityToNyquist } from "./filtering";
+import { InstrumentState, Instrument } from "./Instrument";
+import { Synth } from "./synth";
+import { SustainType, Config } from "./SynthConfig";
 import { Tone } from "./Tone";
 
 export class PickedString {

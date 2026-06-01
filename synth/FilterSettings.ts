@@ -1,5 +1,6 @@
 import { FilterControlPoint } from "./FilterControlPoint";
-
+import { FilterCoefficients, FrequencyResponse } from "./filtering";
+import { FilterType, Config, Envelope, EnvelopeType } from "./SynthConfig";
 
 export class FilterSettings {
     public readonly controlPoints: FilterControlPoint[] = [];

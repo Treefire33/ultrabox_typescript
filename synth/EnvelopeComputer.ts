@@ -1,6 +1,10 @@
+import { AutomationTarget, Config, Envelope, EnvelopeComputeIndex, EnvelopeType, FilterType, Transition } from "./SynthConfig";
 import { EnvelopeSettings } from "./EnvelopeSettings";
 import { FilterSettings } from "./FilterSettings";
 import { Tone } from "./Tone";
+import { Instrument } from "./Instrument";
+import { NotePin } from "./Note";
+import { Synth } from "./synth";
 
 export class EnvelopeComputer {
     // "Unscaled" values do not increase with Envelope Speed's timescale factor. Thus they are "real" seconds since the start of the note.

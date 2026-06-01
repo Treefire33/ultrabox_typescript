@@ -1,3 +1,7 @@
+import { inverseRealFourierTransform, scaleElementsByFactor } from "./FFT";
+import { Synth } from "./synth";
+import { Config, drawNoiseSpectrum } from "./SynthConfig";
+
 export class SpectrumWave {
     public spectrum: number[] = [];
     public hash: number = -1;

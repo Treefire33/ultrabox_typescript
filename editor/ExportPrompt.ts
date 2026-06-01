@@ -4,7 +4,7 @@ import { InstrumentType, /*EnvelopeType,*/ Config, getArpeggioPitchIndex } from 
 import { Synth } from "../synth/synth";
 import { Song } from "../synth/Song";
 import { Note } from "../synth/Note";
-import { Pattern } from "../synth/Pattern";
+import { ChannelType, Pattern } from "../synth/Pattern";
 import { Instrument } from "../synth/Instrument";
 import { ColorConfig } from "./ColorConfig";
 import { Preset, EditorConfig } from "./EditorConfig";
@@ -490,7 +490,8 @@ export class ExportPrompt implements Prompt {
         const tracks = [{ isMeta: true, channel: -1, midiChannel: -1, isNoise: false, isDrumset: false }];
         let midiChannelCounter: number = 0;
         let foundADrumset: boolean = false;
-        for (let channel: number = 0; channel < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount; channel++) {
+        for (let channel: number = 0; channel < this._doc.song.channels.length; channel++) {
+            if (this._doc.song.channels[channel].channelType >= ChannelType.mod) { continue; }
             if (!foundADrumset && this._doc.song.channels[channel].instruments[0].type == InstrumentType.drumset) {
                 tracks.push({ isMeta: false, channel: channel, midiChannel: 9, isNoise: true, isDrumset: true });
                 foundADrumset = true; // There can only be one drumset channel, and it's always channel 9 (seen as 10 in most UIs). :/

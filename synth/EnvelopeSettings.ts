@@ -1,3 +1,5 @@
+import { Config, AutomationTarget, Envelope } from "./SynthConfig";
+import { clamp } from "./Utilities";
 
 export class EnvelopeSettings {
     public target: number = 0;

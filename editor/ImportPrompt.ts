@@ -620,7 +620,7 @@ export class ImportPrompt implements Prompt {
 												instrument.fromJsonObject(preset.settings, isNoiseChannel, isModChannel, false, false, 1);
 											instrument.preset = presetValue;
 										} else {
-											instrument.setTypeAndReset(isModChannel ? InstrumentType.mod : (isNoiseChannel ? InstrumentType.noise : InstrumentType.chip), isNoiseChannel, isModChannel);
+											instrument.setTypeAndReset(isModChannel ? InstrumentType.mod : (isNoiseChannel ? InstrumentType.noise : InstrumentType.chip), isNoiseChannel);
 											instrument.chord = 0; // Midi instruments use polyphonic harmony by default.
 										}
 											
@@ -830,7 +830,7 @@ export class ImportPrompt implements Prompt {
                 let tempoModChannel = new Channel();
                 modChannels.push(tempoModChannel);
                 let tempoModInstrument = new Instrument(false, true);
-                tempoModInstrument.setTypeAndReset(9 /* InstrumentType.mod */, false, true);
+                tempoModInstrument.setTypeAndReset(9 /* InstrumentType.mod */, false);
                 tempoModInstrument.modulators[0] = Config.modulators.dictionary["tempo"].index;
                 tempoModInstrument.modChannels[0] = -1;
                 tempoModChannel.instruments.push(tempoModInstrument);

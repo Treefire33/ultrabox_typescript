@@ -1,3 +1,5 @@
+import { Config } from "./SynthConfig";
+
 export class CustomAlgorithm {
     public name: string = "";
     public carrierCount: number = 0;
