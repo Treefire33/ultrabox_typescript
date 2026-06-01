@@ -2,7 +2,7 @@
 
 import { Dictionary, Config } from "../synth/SynthConfig";
 import { Note, NotePin } from "../synth/Note";
-import { Pattern } from "../synth/Pattern";
+import { ChannelType, Pattern } from "../synth/Pattern";
 import { SongDocument } from "./SongDocument";
 import { ChangeGroup } from "./Change";
 import { ColorConfig } from "./ColorConfig";
@@ -469,7 +469,7 @@ export class Selection {
                 if (pattern == null) throw new Error();
                 group.append(new ChangePaste(this._doc, pattern, pastedNotes, this.patternSelectionActive ? this.patternSelectionStart : 0, this.patternSelectionActive ? this.patternSelectionEnd : Config.partsPerBeat * this._doc.song.beatsPerBar, copiedPartDuration));
                 // @jummbus - I actually like it better if instruments copy over, unless it's not a mod and there are notes in the pattern.
-                if (currentPatternIndex == 0 || patternCopy.notes.length == 0 || channelIndex >= this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount) {
+                if (currentPatternIndex == 0 || patternCopy.notes.length == 0 || this._doc.song.channels[channelIndex].channelType == ChannelType.mod) {
                     this.selectInstrument(instrumentsCopy[0]);
                     group.append(new ChangeSetPatternInstruments(this._doc, channelIndex, instrumentsCopy, pattern));
                 }
@@ -692,7 +692,7 @@ export class Selection {
         let alreadySoloed: boolean = true;
 
         // Soloing mod channels - solo all channels affected by the mod, instead
-        if (this.boxSelectionChannel >= this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount) {
+        if (this._doc.song.channels[this.boxSelectionChannel].channelType == ChannelType.mod) {
 
             const currentChannel = this._doc.song.channels[this.boxSelectionChannel];
             const bar: number = currentChannel.bars[this._doc.bar] - 1;
@@ -701,7 +701,8 @@ export class Selection {
             let matchesSoloPattern: boolean = !invert;
 
             // First pass: determine solo pattern
-            for (let channelIndex: number = 0; channelIndex < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount; channelIndex++) {
+            for (let channelIndex: number = 0; channelIndex < this._doc.song.channels.length; channelIndex++) {
+                if (this._doc.song.channels[channelIndex].channelType >= ChannelType.mod) { continue; }
                 soloPattern[channelIndex] = false;
                 for (let mod: number = 0; mod < Config.modCount; mod++) {
                     if (modInstrument.modChannels[mod] == channelIndex) {
@@ -711,7 +712,8 @@ export class Selection {
             }
 
             // Second pass: determine if channels match solo pattern, overall
-            for (let channelIndex: number = 0; channelIndex < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount; channelIndex++) {
+            for (let channelIndex: number = 0; channelIndex < this._doc.song.channels.length; channelIndex++) {
+                if (this._doc.song.channels[channelIndex].channelType >= ChannelType.mod) { continue; }
                 if (this._doc.song.channels[channelIndex].muted == soloPattern[channelIndex]) {
                     matchesSoloPattern = invert;
                     break;
@@ -719,7 +721,8 @@ export class Selection {
             }
 
             // Third pass: Actually apply solo pattern or unmute all
-            for (let channelIndex: number = 0; channelIndex < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount; channelIndex++) {
+            for (let channelIndex: number = 0; channelIndex < this._doc.song.channels.length; channelIndex++) {
+                if (this._doc.song.channels[channelIndex].channelType >= ChannelType.mod) { continue; }
                 if (matchesSoloPattern) {
                     this._doc.song.channels[channelIndex].muted = false;
                 }
@@ -731,7 +734,8 @@ export class Selection {
         }
         else {
 
-            for (let channelIndex: number = 0; channelIndex < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount; channelIndex++) {
+            for (let channelIndex: number = 0; channelIndex < this._doc.song.channels.length; channelIndex++) {
+                if (this._doc.song.channels[channelIndex].channelType >= ChannelType.mod) { continue; }
                 const shouldBeMuted: boolean = (channelIndex < this.boxSelectionChannel || channelIndex >= this.boxSelectionChannel + this.boxSelectionHeight) ? !invert : invert;
                 if (this._doc.song.channels[channelIndex].muted != shouldBeMuted) {
                     alreadySoloed = false;
@@ -744,7 +748,8 @@ export class Selection {
                     this._doc.song.channels[channelIndex].muted = false;
                 }
             } else {
-                for (let channelIndex: number = 0; channelIndex < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount; channelIndex++) {
+                for (let channelIndex: number = 0; channelIndex < this._doc.song.channels.length; channelIndex++) {
+                    if (this._doc.song.channels[channelIndex].channelType >= ChannelType.mod) { continue; }
                     this._doc.song.channels[channelIndex].muted = (channelIndex < this.boxSelectionChannel || channelIndex >= this.boxSelectionChannel + this.boxSelectionHeight) ? !invert : invert;
                 }
             }
@@ -814,7 +819,7 @@ export class Selection {
 
         for (const channelIndex of this._eachSelectedChannel()) {
 		    // Can't transpose mod channels.
-		    if (channelIndex >= this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount)
+		    if (this._doc.song.channels[channelIndex].channelType >= ChannelType.mod)
                 continue;
             for (const pattern of this._eachSelectedPattern(channelIndex)) {
                 this._changeTranspose.append(new ChangeTranspose(this._doc, channelIndex, pattern, upward, this._doc.prefs.notesOutsideScale, octave));
@@ -826,9 +831,9 @@ export class Selection {
 
     public swapChannels(offset: number): void {
         const possibleSectionBoundaries: number[] = [
-            this._doc.song.pitchChannelCount,
-            this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount,
-            this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount + this._doc.song.modChannelCount,
+            // this._doc.song.pitchChannelCount,
+            // this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount,
+            // this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount + this._doc.song.modChannelCount,
             this._doc.song.getChannelCount(),
         ];
         let channelSectionMin: number = 0;
@@ -860,7 +865,7 @@ export class Selection {
     public selectInstrument(instrument: number): void {
         if (this._doc.viewedInstrument[this._doc.channel] == instrument) {
             // Multi-selection is not possible for mods... that would not make much sense.
-            if (this._doc.song.layeredInstruments && this._doc.song.patternInstruments && this._doc.channel < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount) {
+            if (this._doc.song.layeredInstruments && this._doc.song.patternInstruments && this._doc.song.channels[this._doc.channel].channelType < ChannelType.mod) {
                 const canReplaceLastChange: boolean = this._doc.lastChangeWas(this._changeInstrument);
                 this._changeInstrument = new ChangeGroup();
                 const instruments: number[] = this._doc.recentPatternInstruments[this._doc.channel];
@@ -892,7 +897,7 @@ export class Selection {
             this._changeInstrument = new ChangeGroup();
             this._changeInstrument.append(new ChangeViewInstrument(this._doc, instrument));
 
-            if (!(this._doc.song.layeredInstruments && this._doc.channel < this._doc.song.pitchChannelCount + this._doc.song.noiseChannelCount) && this._doc.song.patternInstruments) {
+            if (!(this._doc.song.layeredInstruments && this._doc.song.channels[this._doc.channel].channelType < ChannelType.mod) && this._doc.song.patternInstruments) {
                 if (this.boxSelectionActive) {
                     this._changeInstrument.append(new ChangeDuplicateSelectedReusedPatterns(this._doc, this.boxSelectionBar, this.boxSelectionWidth, this.boxSelectionChannel, this.boxSelectionHeight));
                 }

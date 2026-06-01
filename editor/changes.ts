@@ -3,7 +3,7 @@
 import { Algorithm, Dictionary, FilterType, SustainType, InstrumentType, EffectType, AutomationTarget, Config, effectsIncludeDistortion } from "../synth/SynthConfig";
 import { Synth } from "../synth/synth";
 import { NotePin, Note, makeNotePin } from "../synth/Note";
-import { Pattern, Channel } from "../synth/Pattern";
+import { Pattern, Channel, ChannelType } from "../synth/Pattern";
 import { FilterSettings } from "../synth/FilterSettings";
 import { FilterControlPoint } from "../synth/FilterControlPoint";
 import { HarmonicsWave } from "../synth/HarmonicsWave";
@@ -418,13 +418,14 @@ export class ChangeMoveAndOverflowNotes extends ChangeGroup {
             const oldChannel: Channel = doc.song.channels[channelIndex];
             const newChannel: Channel = new Channel();
 
-            if (channelIndex < doc.song.pitchChannelCount) {
+            if (oldChannel.channelType == ChannelType.pitch) {
                 pitchChannels.push(newChannel);
-            } else if (channelIndex < doc.song.pitchChannelCount + doc.song.noiseChannelCount) {
+            } else if (oldChannel.channelType == ChannelType.noise) {
                 noiseChannels.push(newChannel);
-            }
-            else {
+            } else if (oldChannel.channelType == ChannelType.mod) {
                 modChannels.push(newChannel);
+            } else {
+                continue;
             }
 
             newChannel.muted = oldChannel.muted;
@@ -1593,7 +1594,7 @@ export class ChangePatternNumbers extends Change {
         }
 
         //Make mod channels shift viewed instrument over when pattern numbers change
-        if (startChannel >= doc.song.pitchChannelCount + doc.song.noiseChannelCount) {
+        if (doc.song.getChannelIsMod(startChannel)) {
             const pattern: Pattern | null = doc.getCurrentPattern();
             if (pattern != null) {
                 doc.viewedInstrument[startChannel] = pattern.instruments[0];
@@ -1728,7 +1729,8 @@ export class ChangeChannelOrder extends Change {
 
         // Update mods for each channel
         selectionMax = Math.max(selectionMax, selectionMin);
-        for (let channelIndex: number = doc.song.pitchChannelCount + doc.song.noiseChannelCount; channelIndex < doc.song.getChannelCount(); channelIndex++) {
+        for (let channelIndex: number = 0; channelIndex < doc.song.getChannelCount(); channelIndex++) {
+            if (!doc.song.getChannelIsMod(channelIndex)) { continue; }
             for (let instrumentIdx: number = 0; instrumentIdx < doc.song.channels[channelIndex].instruments.length; instrumentIdx++) {
                 let instrument: Instrument = doc.song.channels[channelIndex].instruments[instrumentIdx];
                 for (let i: number = 0; i < Config.modCount; i++) {
@@ -1785,7 +1787,7 @@ export class ChangeChannelCount extends Change {
                                 instrument.preset = presetValue;
                                 instrument.effects |= 1 << EffectType.panning;
                             } else {
-                                instrument.setTypeAndReset(InstrumentType.mod, isNoise, isMod);
+                                instrument.setTypeAndReset(InstrumentType.mod, isNoise);
                             }
                             newChannels[channelIndex].instruments[j] = instrument;
                         }
